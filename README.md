@@ -2,47 +2,50 @@
 
 Experimental Android Telegram client project.
 
-**Architecture decisions**
-- Full Liquid Glass UI across chats, message surfaces, navigation, sheets, dialogs, and settings.
-- Hybrid plugin architecture: exteraGram-compatible API direction with exteraless-inspired permission boundaries and safety controls.
-- Hybrid source strategy: NagramXF is the initial upstream baseline; selected components from exteraless/exteraGram will be evaluated and ported deliberately.
+## Architecture decisions
+
+- **Liquid Glass:** full interface coverage — navigation, chat list, chat screen, message surfaces, composer, sheets, dialogs, profile, and settings.
+- **Plugin system:** hybrid direction — exteraGram API compatibility where practical, with exteraless-inspired permissions, lifecycle management, and recovery controls.
+- **Source strategy:** hybrid — NagramXF is the initial upstream baseline; selected exteraGram/exteraless components will be audited and ported deliberately.
 
 ## Current repository model
 
-This repository currently contains the Glass build configuration and patch layer. The upstream NagramXF source is cloned during GitHub Actions into a temporary `source/` directory with its Git submodules. It is not yet a native GitHub fork or a full source mirror.
+This repository currently contains the Glass build configuration and patch layer. The upstream NagramXF source is cloned during GitHub Actions into a temporary `source/` directory with its Git submodules. It is **not yet a native GitHub fork or a full source mirror**.
 
 Upstream: https://github.com/Keeperorowner/NagramXF  
 Upstream branch: `dev`  
-License of upstream source: GPL-3.0. Review upstream notices and preserve all required attribution when redistributing binaries or derivative source.
+Upstream source license: GPL-3.0. Preserve required notices and attribution when redistributing derivative source or binaries.
 
 ## Build a debug APK
 
 1. Open **Settings → Secrets and variables → Actions** in this repository.
-2. Add the secrets below.
-3. Open **Actions → Nagram XF Glass · Debug APK → Run workflow**.
-4. Keep the default upstream ref `dev`, or enter a tag/branch/commit.
-5. Download the APKs from the run's **Artifacts** section.
+2. Add the required signing secrets below.
+3. Optionally add your own Telegram API credentials.
+4. Open **Actions → Nagram XF Glass · Debug APK → Run workflow**.
+5. Keep the default upstream ref `dev`, or enter a tag/branch/commit.
+6. Download the APKs from the run's **Artifacts** section.
 
 ### Required repository secrets
 
 | Secret | Value |
 |---|---|
-| `SIGNING_KEYSTORE_BASE64` | Base64-encoded persistent keystore used to sign debug APKs |
-| `LOCAL_PROPERTIES` | Optional Base64-encoded Java properties file with Telegram API credentials and signing passwords |
+| `SIGNING_KEYSTORE_BASE64` | Base64-encoded persistent keystore |
+| `KEYSTORE_PASS` | Keystore password |
+| `ALIAS_NAME` | Key alias |
+| `ALIAS_PASS` | Key password |
 
-Alternatively, add `TELEGRAM_APP_ID` and `TELEGRAM_APP_HASH` as separate secrets. If neither separate credentials nor `LOCAL_PROPERTIES` are set, the workflow falls back to the public test credentials present in upstream NagramXF. Use your own credentials for regular personal builds.
+Optional Telegram credentials:
 
-Example `local.properties` before Base64 encoding:
+| Secret | Value |
+|---|---|
+| `TELEGRAM_APP_ID` | Your Telegram API ID |
+| `TELEGRAM_APP_HASH` | Your Telegram API hash |
 
-```properties
-TELEGRAM_APP_ID=your_app_id
-TELEGRAM_APP_HASH=your_app_hash
-KEYSTORE_PASS=your_store_password
-ALIAS_NAME=your_alias
-ALIAS_PASS=your_key_password
-```
+If the Telegram credentials are omitted, the workflow falls back to the public test credentials present in upstream NagramXF. Use your own credentials for regular personal builds.
 
-Create a persistent keystore locally (do this once; keep it safe):
+### Create a persistent signing key (once)
+
+Run locally:
 
 ```bash
 keytool -genkeypair -v \
@@ -52,16 +55,21 @@ keytool -genkeypair -v \
   -keyalg RSA -keysize 2048 -validity 10000
 ```
 
-Encode files on Linux:
+Encode the keystore on Linux:
 
 ```bash
 base64 -w0 glass-debug.keystore
-base64 -w0 local.properties
 ```
 
-On macOS use `base64 < file | tr -d '\\n'`.
+On macOS:
 
-The keystore alias and passwords in `local.properties` must match the keystore you created. Never commit the keystore or local properties to Git.
+```bash
+base64 < glass-debug.keystore | tr -d '\\n'
+```
+
+Add the resulting single-line value as `SIGNING_KEYSTORE_BASE64`. Save the password and alias you entered as `KEYSTORE_PASS`, `ALIAS_NAME`, and `ALIAS_PASS`. Keep this keystore safe: using the same key is necessary to install future builds as updates over earlier builds. Never commit it to Git.
+
+Obtain your Telegram API credentials from https://my.telegram.org and add them as the optional secrets above.
 
 ## Patch workflow
 
