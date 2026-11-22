@@ -1,0 +1,161 @@
+name: Nagram XF Glass · Debug APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream_ref:
+        description: "NagramXF upstream branch, tag, or commit"
+        required: true
+        default: "dev"
+        type: string
+  push:
+    branches: [main, dev]
+    paths:
+      - ".github/workflows/build-debug.yml"
+      - "patches/**"
+      - "scripts/**"
+      - "README.md"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: glass-debug-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build NagramXF Glass (debug)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+
+    env:
+      UPSTREAM_REPO: Keeperorowner/NagramXF
+      UPSTREAM_REF: ${{ inputs.upstream_ref || 'dev' }}
+      NATIVE_TARGET: arm64-v8a
+      TELEGRAM_APP_ID: ${{ secrets.TELEGRAM_APP_ID }}
+      TELEGRAM_APP_HASH: ${{ secrets.TELEGRAM_APP_HASH }}
+      LOCAL_PROPERTIES: ${{ secrets.LOCAL_PROPERTIES }}
+      SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+
+    steps:
+      - name: Checkout Glass configuration
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Validate upstream ref
+        shell: bash
+        run: |
+          if [[ ! "$UPSTREAM_REF" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+            echo "::error::Invalid upstream_ref"
+            exit 1
+          fi
+
+      - name: Clone NagramXF and all submodules
+        shell: bash
+        run: |
+          git clone \
+            --depth 1 \
+            --branch "$UPSTREAM_REF" \
+            --recurse-submodules \
+            --shallow-submodules \
+            "https://github.com/$UPSTREAM_REPO.git" source
+
+          echo "UPSTREAM_SHA=$(git -C source rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Apply project patches
+        shell: bash
+        run: |
+          shopt -s nullglob
+          patches=(patches/*.patch)
+          for patch_file in "${patches[@]}"; do
+            echo "Applying $patch_file"
+            git -C source apply --check "$GITHUB_WORKSPACE/$patch_file"
+            git -C source apply "$GITHUB_WORKSPACE/$patch_file"
+          done
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android build dependencies
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0" \
+            "ndk;27.2.12479018" \
+            "cmake;3.31.6"
+
+      - name: Configure Telegram credentials
+        shell: bash
+        run: |
+          app_id="${TELEGRAM_APP_ID:-6}"
+          app_hash="${TELEGRAM_APP_HASH:-eb06d4abfb49dc3eeb1aeb98ae0f581e}"
+
+          if [[ -n "$LOCAL_PROPERTIES" ]]; then
+            echo "$LOCAL_PROPERTIES" | base64 --decode > source/local.properties
+          else
+            cat > source/local.properties <<EOF
+          TELEGRAM_APP_ID=$app_id
+          TELEGRAM_APP_HASH=$app_hash
+          EOF
+          fi
+
+      - name: Configure stable APK signing
+        shell: bash
+        run: |
+          if [[ -z "$SIGNING_KEYSTORE_BASE64" ]]; then
+            echo "::error::Add SIGNING_KEYSTORE_BASE64 repository secret. See README."
+            exit 1
+          fi
+
+          echo "$SIGNING_KEYSTORE_BASE64" | base64 --decode > source/TMessagesProj/release.keystore
+          test -s source/TMessagesProj/release.keystore
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build Normal and Plugin Debug APKs
+        working-directory: source
+        env:
+          BUILD_TIMESTAMP: ${{ github.run_id }}
+          COMMIT_ID: ${{ env.UPSTREAM_SHA }}
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon --stacktrace \
+            :TMessagesProj:assembleNormalDebug \
+            :TMessagesProj:assemblePluginDebug
+
+      - name: Collect APKs and build metadata
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/output"
+          find source/TMessagesProj/build/outputs/apk -type f -name '*.apk' \
+            -exec cp {} "$GITHUB_WORKSPACE/output/" \; 2>/dev/null || true
+
+          {
+            echo "Glass configuration commit: $GITHUB_SHA"
+            echo "NagramXF upstream: $UPSTREAM_REPO"
+            echo "NagramXF ref: $UPSTREAM_REF"
+            echo "NagramXF commit: ${UPSTREAM_SHA:-not-cloned}"
+            echo "Native ABI: $NATIVE_TARGET"
+          } > "$GITHUB_WORKSPACE/output/BUILD-INFO.txt"
+
+      - name: Upload debug APK artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: NagramXF-Glass-debug-${{ github.run_number }}
+          path: output/*
+          if-no-files-found: error
+          retention-days: 14
