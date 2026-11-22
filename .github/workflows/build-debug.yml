@@ -126,6 +126,9 @@ jobs:
             KEYSTORE_PASS=android
             ALIAS_NAME=androidkey
             ALIAS_PASS=android
+            # Upstream may ship a release.keystore with an unknown password.
+            # Generate the temporary CI key from a clean path instead.
+            rm -f source/TMessagesProj/release.keystore
             keytool -genkeypair -noprompt -v \
               -keystore source/TMessagesProj/release.keystore \
               -storetype JKS \
