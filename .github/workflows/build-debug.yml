@@ -65,6 +65,9 @@ jobs:
 
           echo "UPSTREAM_SHA=$(git -C source rev-parse HEAD)" >> "$GITHUB_ENV"
 
+      - name: Verify upstream source and Liquid Glass baseline
+        run: bash scripts/verify-upstream.sh source
+
       - name: Apply project patches
         shell: bash
         run: |
