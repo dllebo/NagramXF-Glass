@@ -25,7 +25,11 @@ Upstream source license: GPL-3.0. Preserve required notices and attribution when
 5. Keep the default upstream ref `dev`, or enter a tag/branch/commit.
 6. Download the APKs from the run's **Artifacts** section.
 
-### Required repository secrets
+### Optional repository secrets
+
+A first build can run without a signing key: Actions generates a temporary debug key. APKs signed this way are installable, but a later run will have a different signature and cannot update-install over the previous APK. You must uninstall the old app before installing a new one.
+
+For repeat builds that update-install over one another, add all four persistent signing secrets:
 
 | Secret | Value |
 |---|---|
