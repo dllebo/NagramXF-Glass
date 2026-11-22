@@ -35,7 +35,9 @@ jobs:
       NATIVE_TARGET: arm64-v8a
       TELEGRAM_APP_ID: ${{ secrets.TELEGRAM_APP_ID }}
       TELEGRAM_APP_HASH: ${{ secrets.TELEGRAM_APP_HASH }}
-      LOCAL_PROPERTIES: ${{ secrets.LOCAL_PROPERTIES }}
+      KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+      ALIAS_NAME: ${{ secrets.ALIAS_NAME }}
+      ALIAS_PASS: ${{ secrets.ALIAS_PASS }}
       SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
 
     steps:
@@ -95,24 +97,25 @@ jobs:
             "ndk;27.2.12479018" \
             "cmake;3.31.6"
 
-      - name: Configure Telegram credentials
+      - name: Configure Telegram credentials and signing
         shell: bash
         run: |
+          if [[ -z "$KEYSTORE_PASS" || -z "$ALIAS_NAME" || -z "$ALIAS_PASS" ]]; then
+            echo "::error::Add KEYSTORE_PASS, ALIAS_NAME and ALIAS_PASS repository secrets."
+            exit 1
+          fi
+
           app_id="${TELEGRAM_APP_ID:-6}"
           app_hash="${TELEGRAM_APP_HASH:-eb06d4abfb49dc3eeb1aeb98ae0f581e}"
 
-          if [[ -n "$LOCAL_PROPERTIES" ]]; then
-            echo "$LOCAL_PROPERTIES" | base64 --decode > source/local.properties
-          else
-            cat > source/local.properties <<EOF
+          cat > source/local.properties <<EOF
           TELEGRAM_APP_ID=$app_id
           TELEGRAM_APP_HASH=$app_hash
+          KEYSTORE_PASS=$KEYSTORE_PASS
+          ALIAS_NAME=$ALIAS_NAME
+          ALIAS_PASS=$ALIAS_PASS
           EOF
-          fi
 
-      - name: Configure stable APK signing
-        shell: bash
-        run: |
           if [[ -z "$SIGNING_KEYSTORE_BASE64" ]]; then
             echo "::error::Add SIGNING_KEYSTORE_BASE64 repository secret. See README."
             exit 1
