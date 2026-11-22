@@ -9,12 +9,11 @@ on:
         default: "dev"
         type: string
   push:
-    branches: [main, dev]
+    branches: [main, dev, 'feature/**']
     paths:
       - ".github/workflows/build-debug.yml"
       - "patches/**"
       - "scripts/**"
-      - "README.md"
 
 permissions:
   contents: read
@@ -100,13 +99,31 @@ jobs:
       - name: Configure Telegram credentials and signing
         shell: bash
         run: |
-          if [[ -z "$KEYSTORE_PASS" || -z "$ALIAS_NAME" || -z "$ALIAS_PASS" ]]; then
-            echo "::error::Add KEYSTORE_PASS, ALIAS_NAME and ALIAS_PASS repository secrets."
-            exit 1
-          fi
-
           app_id="${TELEGRAM_APP_ID:-6}"
           app_hash="${TELEGRAM_APP_HASH:-eb06d4abfb49dc3eeb1aeb98ae0f581e}"
+
+          if [[ -n "$SIGNING_KEYSTORE_BASE64" ]]; then
+            if [[ -z "$KEYSTORE_PASS" || -z "$ALIAS_NAME" || -z "$ALIAS_PASS" ]]; then
+              echo "::error::A persistent keystore also requires KEYSTORE_PASS, ALIAS_NAME and ALIAS_PASS."
+              exit 1
+            fi
+            echo "$SIGNING_KEYSTORE_BASE64" | base64 --decode > source/TMessagesProj/release.keystore
+          else
+            echo "::warning::No persistent signing key configured; generating a temporary key for this run. Future APKs will not update-install over this build."
+            KEYSTORE_PASS=android
+            ALIAS_NAME=androidkey
+            ALIAS_PASS=android
+            keytool -genkeypair -noprompt -v \
+              -keystore source/TMessagesProj/release.keystore \
+              -storetype JKS \
+              -storepass "$KEYSTORE_PASS" \
+              -alias "$ALIAS_NAME" \
+              -keypass "$ALIAS_PASS" \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=NagramXF Glass Debug"
+          fi
+
+          test -s source/TMessagesProj/release.keystore
 
           cat > source/local.properties <<EOF
           TELEGRAM_APP_ID=$app_id
@@ -115,14 +132,6 @@ jobs:
           ALIAS_NAME=$ALIAS_NAME
           ALIAS_PASS=$ALIAS_PASS
           EOF
-
-          if [[ -z "$SIGNING_KEYSTORE_BASE64" ]]; then
-            echo "::error::Add SIGNING_KEYSTORE_BASE64 repository secret. See README."
-            exit 1
-          fi
-
-          echo "$SIGNING_KEYSTORE_BASE64" | base64 --decode > source/TMessagesProj/release.keystore
-          test -s source/TMessagesProj/release.keystore
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
