@@ -9,12 +9,11 @@ on:
         default: "dev"
         type: string
   push:
-    branches: [main, dev]
+    branches: [main, dev, 'feature/**']
     paths:
       - ".github/workflows/build-debug.yml"
       - "patches/**"
       - "scripts/**"
-      - "README.md"
 
 permissions:
   contents: read
