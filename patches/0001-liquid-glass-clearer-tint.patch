@@ -1,0 +1,19 @@
+diff --git a/TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/impl/BlurredBackgroundProviderImpl.java b/TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/impl/BlurredBackgroundProviderImpl.java
+--- a/TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/impl/BlurredBackgroundProviderImpl.java
++++ b/TMessagesProj/src/main/java/org/telegram/ui/Components/blur3/drawable/color/impl/BlurredBackgroundProviderImpl.java
+@@ -24,7 +24,7 @@ public class BlurredBackgroundProviderImpl {
+         return new BlurredBackgroundProviderBuilder(resourcesProvider)
+             .setBackgroundColor((r, isDark) -> {
+-                final float alpha = LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.85f : 0.76f;
++                final float alpha = LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.22f : 0.76f;
+                 final int colorBg = Theme.getColor(Theme.key_windowBackgroundWhite, r);
+                 final int colorTarget = Theme.getColor(Theme.key_glass_targetMainTabs, r);
+                 return solveSrcColor(colorBg, colorTarget, alpha);
+@@ -41,7 +41,7 @@ public class BlurredBackgroundProviderImpl {
+         return new BlurredBackgroundProviderBuilder(resourcesProvider)
+             .setBackgroundColor((r, isDark) -> {
+-                final float alpha = LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.85f : 0.76f;
++                final float alpha = LiteMode.isEnabled(LiteMode.FLAG_LIQUID_GLASS) ? 0.22f : 0.76f;
+                 final int colorBg = Theme.getColor(Theme.key_windowBackgroundWhite, r);
+                 final int colorTarget = Theme.getColor(Theme.key_glass_targetMainTopPanel, r);
+                 return solveSrcColor(colorBg, colorTarget, alpha);
