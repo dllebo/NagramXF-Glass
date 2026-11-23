@@ -108,7 +108,7 @@ jobs:
                   client.setdefault("client_info", {}).setdefault(
                       "android_client_info", {}
                   )["package_name"] = "fork.risin42.nagramx.glass"
-              path.write_text(json.dumps(data, indent=2) + "\\n")
+              path.write_text(json.dumps(data, indent=2) + "\n")
               print("Adjusted local Google Services package name")
           else:
               print("No google-services.json present; skipping package adjustment")
