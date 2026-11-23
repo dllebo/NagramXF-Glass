@@ -109,10 +109,20 @@ jobs:
             "ndk;27.2.12479018" \
             "cmake;3.31.6"
 
-      - name: Install Chaquopy build dependency
+      - name: Set up Python 3.11 for Chaquopy
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Configure Chaquopy host Python
         shell: bash
         run: |
-          /usr/bin/python3 -m pip install --break-system-packages --disable-pip-version-check Cython==3.0.11
+          python --version
+          python -m pip install --disable-pip-version-check Cython==3.0.11
+          # Chaquopy invokes /usr/bin/python3 directly, so point that path
+          # at the pinned 3.11 interpreter for this disposable CI runner.
+          sudo ln -sf "$(command -v python)" /usr/bin/python3
+          /usr/bin/python3 --version
           /usr/bin/python3 -c "import Cython; print('Cython', Cython.__version__)"
 
       - name: Configure Telegram credentials and signing
