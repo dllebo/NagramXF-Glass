@@ -174,8 +174,12 @@ jobs:
       - name: Configure Telegram credentials and signing
         shell: bash
         run: |
-          app_id="${TELEGRAM_APP_ID:-6}"
-          app_hash="${TELEGRAM_APP_HASH:-eb06d4abfb49dc3eeb1aeb98ae0f581e}"
+          if [[ -z "$TELEGRAM_APP_ID" || -z "$TELEGRAM_APP_HASH" ]]; then
+            echo "::error::Set TELEGRAM_APP_ID and TELEGRAM_APP_HASH repository secrets before building."
+            exit 1
+          fi
+          app_id="$TELEGRAM_APP_ID"
+          app_hash="$TELEGRAM_APP_HASH"
 
           if [[ -n "$SIGNING_KEYSTORE_BASE64" ]]; then
             if [[ -z "$KEYSTORE_PASS" || -z "$ALIAS_NAME" || -z "$ALIAS_PASS" ]]; then
