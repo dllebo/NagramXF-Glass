@@ -16,6 +16,12 @@ Upstream: https://github.com/Keeperorowner/NagramXF
 Upstream branch: `dev`  
 Upstream source license: GPL-3.0. Preserve required notices and attribution when redistributing derivative source or binaries.
 
+## Separate app identity
+
+Glass builds use the Android application ID `fork.risin42.nagramx.glass`, while upstream NagramXF uses `fork.risin42.nagramx`. This allows Glass to be installed alongside the original app without replacing it. The workflow applies this identity override to the freshly cloned upstream source; it does not modify the upstream repository.
+
+The upstream Firebase client metadata is adjusted locally during CI so the Google Services Gradle plugin can generate build resources. For reliable Firebase Cloud Messaging and Crashlytics under the Glass package, register a separate Android app in your own Firebase project and replace the upstream `TMessagesProj/google-services.json` through a reviewed patch.
+
 ## Build a debug APK
 
 1. Open **Settings → Secrets and variables → Actions** in this repository.
