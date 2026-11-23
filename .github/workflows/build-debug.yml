@@ -68,6 +68,52 @@ jobs:
       - name: Verify upstream source and Liquid Glass baseline
         run: bash scripts/verify-upstream.sh source
 
+      - name: Set Glass application ID
+        shell: bash
+        run: |
+          # Keep Glass installable beside the original NagramXF package.
+          GLASS_APP_PACKAGE="fork.risin42.nagramx.glass"
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path("source/gradle.properties")
+          content = path.read_text()
+          updated, count = re.subn(
+              r"(?m)^APP_PACKAGE=.*$",
+              "APP_PACKAGE=fork.risin42.nagramx.glass",
+              content,
+          )
+          if count != 1:
+              raise SystemExit(f"Expected exactly one APP_PACKAGE entry, found {count}")
+          path.write_text(updated)
+          print("Configured APP_PACKAGE=fork.risin42.nagramx.glass")
+          PY
+
+          # The upstream Firebase config is registered for the upstream package.
+          # Adjust the local client package so the Google Services Gradle plugin
+          # can generate resources; a dedicated Firebase app/config is still
+          # recommended for production push/crash reporting.
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("source/TMessagesProj/google-services.json")
+          if path.exists():
+              data = json.loads(path.read_text())
+              clients = data.get("client", [])
+              if not clients:
+                  raise SystemExit("google-services.json has no client entries")
+              for client in clients:
+                  client.setdefault("client_info", {}).setdefault(
+                      "android_client_info", {}
+                  )["package_name"] = "fork.risin42.nagramx.glass"
+              path.write_text(json.dumps(data, indent=2) + "\\n")
+              print("Adjusted local Google Services package name")
+          else:
+              print("No google-services.json present; skipping package adjustment")
+          PY
+
       - name: Apply project patches
         shell: bash
         run: |
